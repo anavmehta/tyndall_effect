@@ -13,10 +13,31 @@ bool BBox::intersect(const Ray& r, double& t0, double& t1) const {
   // Implement ray - bounding box intersection test
   // If the ray intersected the bouding box within the range given by
   // t0, t1, update t0 and t1 with the new intersection times.
+  auto mn = std::vector<double>(3);
+  auto mx = std::vector<double>(3);
+  for (int i = 0; i < 3; i++) {
+    mn[i] = (min[i] - r.o[i]) / r.d[i];
+    mx[i] = (max[i] - r.o[i]) / r.d[i];
+    if (mn[i] > mx[i])
+      std::swap(mn[i], mx[i]);
+  }
+  auto min_t = *std::max_element(mn.begin(), mn.end());
+  auto max_t = *std::min_element(mx.begin(), mx.end());
 
+  if (min_t > max_t)
+    return false;
 
-  return true;
+  bool hit = false;
+  if (min_t >= t0 && min_t <= t1) {
+    hit = true;
+    t0 = min_t;
+  }
+  if (max_t >= t0 && max_t <= t1) {
+    hit = true;
+    t1 = max_t;
+  }
 
+  return hit;
 }
 
 void BBox::draw(Color c, float alpha) const {
