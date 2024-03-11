@@ -198,8 +198,8 @@ Ray Camera::generate_ray(double x, double y) const {
   // transform from image space to camera space
   x -= 0.5;
   y -= 0.5;
-  x *= tan(.5 * radians(hFov));
-  y *= tan(.5 * radians(vFov));
+  x *= 2 * tan(.5 * radians(hFov));
+  y *= 2 * tan(.5 * radians(vFov));
   
   // direction of the ray in camera space
   Vector3D dir{x, y, -1};
