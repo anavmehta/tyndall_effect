@@ -2,6 +2,10 @@
 
 #include "CGL/CGL.h"
 #include "GL/glew.h"
+#include "vector3D.h"
+#include <algorithm>
+#include <array>
+#include <tuple>
 
 namespace CGL {
 namespace SceneObjects {
@@ -22,22 +26,45 @@ Triangle::Triangle(const Mesh *mesh, size_t v1, size_t v2, size_t v3) {
 
 BBox Triangle::get_bbox() const { return bbox; }
 
+static std::array<double, 4> Moller_Trumbore(const Ray &r, const Triangle &tri) {
+  auto E1 = tri.p2 - tri.p1;
+  auto E2 = tri.p3 - tri.p1;
+  auto S = r.o - tri.p1;
+  auto S1 = cross(r.d, E2);
+  auto S2 = cross(S, E1);
+  auto tmp = dot(S1, E1);
+  auto t = dot(S2, E2) / tmp;
+  auto b1 = dot(S1, S) / tmp;
+  auto b2 = dot(S2, r.d) / tmp;
+  auto b0 = 1 - b1 - b2;
+  return {t, b0, b1, b2};
+}
+
 bool Triangle::has_intersection(const Ray &r) const {
   // Part 1, Task 3: implement ray-triangle intersection
   // The difference between this function and the next function is that the next
   // function records the "intersection" while this function only tests whether
   // there is a intersection.
-
-
-  return true;
-
+  auto [t, b0, b1, b2] = Moller_Trumbore(r, *this);
+  if (t < r.min_t || t > r.max_t)
+    return false;
+  return min({b0, b1, b2}) >= 0 && max({b0, b1, b2}) <= 1;
 }
 
 bool Triangle::intersect(const Ray &r, Intersection *isect) const {
   // Part 1, Task 3:
   // implement ray-triangle intersection. When an intersection takes
   // place, the Intersection data should be updated accordingly
-
+  auto [t, b0, b1, b2] = Moller_Trumbore(r, *this);
+  if (t < r.min_t || t > r.max_t)
+    return false;
+  if (min({b0, b1, b2}) < 0 || max({b0, b1, b2}) > 1)
+    return false;
+  r.max_t = t;
+  isect->t = t;
+  isect->n = b0 * n1 + b1 * n2 + b2 * n3;
+  isect->primitive = this;
+  isect->bsdf = get_bsdf();
 
   return true;
 
