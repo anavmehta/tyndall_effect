@@ -1,10 +1,13 @@
 #include "bvh.h"
 
 #include "CGL/CGL.h"
+#include "scene/primitive.h"
 #include "triangle.h"
 
+#include <algorithm>
 #include <iostream>
 #include <stack>
+#include <utility>
 
 using namespace std;
 
@@ -61,14 +64,52 @@ BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
 
   BBox bbox;
 
+  // compute the bounding box of a list of primitives
   for (auto p = start; p != end; p++) {
     BBox bb = (*p)->get_bbox();
     bbox.expand(bb);
   }
 
+  // initialize a new BVHNode with that bounding box
   BVHNode *node = new BVHNode(bbox);
-  node->start = start;
-  node->end = end;
+  // node->start = start;
+  // node->end = end;
+
+  // If there are no more than max_leaf_size primitives in the list, the node we just created is a leaf node and we should update its start and end iterators appropriately.
+  if (end - start <= max_leaf_size) {
+    node->start = start;
+    node->end = end;
+  }
+  // Otherwise, we need to divide the primitives into a "left" and "right" collection.
+  else {
+    Vector3D centroid = bbox.centroid();
+    std::vector<int> left(3), right(3);
+
+    // split along all axises
+    for (auto p = start; p != end; p++) {
+      BBox bb = (*p)->get_bbox();
+      Vector3D bbc = bb.centroid();
+      for (int i = 0; i < 3; i++) {
+        if (bbc[i] < centroid[i])
+          left[i]++;
+        else
+          right[i]++;
+      }
+    }
+
+    // create a heuristic that selects the axis giving us the most benefit
+    auto h = [&](int i, int j){ return left[i] * right[i] < left[j] * right[j]; };
+    int axis = max({0, 1, 2}, h);
+
+    // partition the array so that elements of the left child are placed on the left
+    // elements of the right child are placed on the right
+    auto partition_point = std::partition(start, end, [&](Primitive* p){
+      return p->get_bbox().centroid()[axis] < centroid[axis];
+    });
+
+    node->l = construct_bvh(start, partition_point, max_leaf_size);
+    node->r = construct_bvh(partition_point, end, max_leaf_size);
+  }
 
   return node;
 
