@@ -195,9 +195,19 @@ Ray Camera::generate_ray(double x, double y) const {
   // Note: hFov and vFov are in degrees.
   //
 
+  // transform from image space to camera space
+  x -= 0.5;
+  y -= 0.5;
+  x *= tan(.5 * radians(hFov));
+  y *= tan(.5 * radians(vFov));
+  
+  // direction of the ray in camera space
+  Vector3D dir{x, y, -1};
 
-  return Ray(pos, Vector3D(0, 0, -1));
+  // transform into world space
+  dir = c2w * dir;
 
+  return Ray(pos, dir.unit());
 }
 
 } // namespace CGL
