@@ -207,7 +207,10 @@ Ray Camera::generate_ray(double x, double y) const {
   // transform into world space
   dir = c2w * dir;
 
-  return Ray(pos, dir.unit());
+  Ray r(pos, dir.unit());
+  r.min_t = nClip;
+  r.max_t = fClip;
+  return r;
 }
 
 } // namespace CGL

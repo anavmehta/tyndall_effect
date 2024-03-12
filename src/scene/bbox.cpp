@@ -28,11 +28,11 @@ bool BBox::intersect(const Ray& r, double& t0, double& t1) const {
     return false;
 
   bool hit = false;
-  if (min_t >= t0 && min_t <= t1) {
+  if (min_t >= t0 - EPS_F && min_t <= t1 + EPS_F) {
     hit = true;
     t0 = min_t;
   }
-  if (max_t >= t0 && max_t <= t1) {
+  if (max_t >= t0 - EPS_F && max_t <= t1 + EPS_F) {
     hit = true;
     t1 = max_t;
   }
