@@ -5,6 +5,7 @@
 #include "vector3D.h"
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <tuple>
 
 namespace CGL {
@@ -46,9 +47,10 @@ bool Triangle::has_intersection(const Ray &r) const {
   // function records the "intersection" while this function only tests whether
   // there is a intersection.
   auto [t, b0, b1, b2] = Moller_Trumbore(r, *this);
-  if (t < r.min_t || t > r.max_t)
+  assert(r.min_t >= 0);
+  if (t <= r.min_t || t >= r.max_t)
     return false;
-  return min({b0, b1, b2}) >= 0 && max({b0, b1, b2}) <= 1;
+  return (min({b0, b1, b2}) >= 0) && (max({b0, b1, b2}) <= 1);
 }
 
 bool Triangle::intersect(const Ray &r, Intersection *isect) const {
@@ -56,11 +58,11 @@ bool Triangle::intersect(const Ray &r, Intersection *isect) const {
   // implement ray-triangle intersection. When an intersection takes
   // place, the Intersection data should be updated accordingly
   auto [t, b0, b1, b2] = Moller_Trumbore(r, *this);
-  if (t < r.min_t || t > isect->t)
+  assert(r.min_t >= 0);
+  if (t <= r.min_t || t >= min(isect->t, r.max_t))
     return false;
   if (min({b0, b1, b2}) < 0 || max({b0, b1, b2}) > 1)
     return false;
-  r.max_t = t;
   isect->t = t;
   isect->n = (b0 * n1 + b1 * n2 + b2 * n3).unit();
   isect->primitive = this;

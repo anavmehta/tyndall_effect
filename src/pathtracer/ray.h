@@ -27,7 +27,7 @@ struct Ray {
 
   Vector3D inv_d;  ///< component wise inverse
 
-  Ray() {}
+  // Ray() {}
 
   /**
    * Constructor.
@@ -37,7 +37,7 @@ struct Ray {
    * \param depth depth of the ray
    */
     Ray(const Vector3D o, const Vector3D d, int depth = 0)
-        : o(o), d(d), min_t(0.0), max_t(INF_D), depth(depth) {
+        : o(o), d(d), min_t(EPS_F), max_t(INF_D), depth(depth) {
     inv_d = 1.0 / d;
   }
 
@@ -50,7 +50,7 @@ struct Ray {
    * \param depth depth of the ray
    */
     Ray(const Vector3D o, const Vector3D d, double max_t, int depth = 0)
-        : o(o), d(d), min_t(0.0), max_t(max_t), depth(depth) {
+        : o(o), d(d), min_t(EPS_F), max_t(max_t), depth(depth) {
     inv_d = 1.0 / d;
   }
 
