@@ -2,12 +2,8 @@
 
 #include "CGL/CGL.h"
 #include "scene/primitive.h"
-#include "triangle.h"
 
 #include <algorithm>
-#include <iostream>
-#include <stack>
-#include <utility>
 
 using namespace std;
 
@@ -123,27 +119,22 @@ bool BVHAccel::has_intersection(const Ray &ray, BVHNode *node) const {
   // Intersection version cannot, since it returns as soon as it finds
   // a hit, it doesn't actually have to find the closest hit.
 
-  if (node->isLeaf()) {
-    for (auto p = node->start; p != node->end; p++) {
-      total_isects++;
-      if ((*p)->has_intersection(ray))
-        return true;
-    }
-    return false;
-  } else {
-    BBox bb = node->bb;
-    double min_t = ray.min_t - EPS_F, max_t = ray.max_t + EPS_F;
-    if (bb.intersect(ray, min_t, max_t))
+  BBox bb = node->bb;
+  double min_t = ray.min_t, max_t = ray.max_t;
+  if (bb.intersect(ray, min_t, max_t)) {
+    if (node->isLeaf()) {
+      for (auto p = node->start; p != node->end; p++) {
+        total_isects++;
+        if ((*p)->has_intersection(ray))
+          return true;
+      }
+      return false;
+    } else {
       return has_intersection(ray, node->l) || has_intersection(ray, node->r);
-    return false;
+    }
   }
 
-  // for (auto p : primitives) {
-  //   total_isects++;
-  //   if (p->has_intersection(ray))
-  //     return true;
-  // }
-  // return false;
+  return false;
 }
 
 bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
@@ -151,13 +142,12 @@ bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
   // Fill in the intersect function.
 
   BBox bb = node->bb;
-  double min_t = ray.min_t - EPS_F, max_t = min(ray.max_t, i->t) + EPS_F;
-  if (bb.intersect(ray, min_t, max_t)) {
+  if (bb.intersect(ray, ray.min_t, ray.max_t)) {
     if (node->isLeaf()) {
       bool hit = false;
       for (auto p = node->start; p != node->end; p++) {
         total_isects++;
-        hit = (*p)->intersect(ray, i) || hit;
+        hit |= (*p)->intersect(ray, i);
       }
       return hit;
     } else {
@@ -167,13 +157,6 @@ bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
     }
   }
   return false;
-
-//   bool hit = false;
-//   for (auto p : primitives) {
-//     total_isects++;
-//     hit = p->intersect(ray, i) || hit;
-//   }
-//   return hit;
 }
 
 } // namespace SceneObjects

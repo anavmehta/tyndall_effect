@@ -79,41 +79,25 @@ PathTracer::estimate_direct_lighting_hemisphere(const Ray &r,
   // TODO BEFORE YOU BEGIN
   // UPDATE `est_radiance_global_illumination` to return direct lighting instead of normal shading 
 
-  // for (int i = 0; i < num_samples; i++) {
-  //   // generate the incident direction in object space
-  //   Vector3D wi = hemisphereSampler->get_sample();
-  //   Intersection new_isect;
-
-  //   // the ray is in world space
-  //   Ray new_ray = Ray(hit_p, o2w * wi);
-  //   new_ray.min_t = EPS_F;
-
-  //   // the bsdf is the property of the object and is in object space
-  //   Vector3D bsdf = isect.bsdf->f(w2o * w_out, w2o * wi);
-
-  //   Vector3D incident_radiance = (bvh->intersect(new_ray, &new_isect))
-  //                                 ? new_isect.bsdf->get_emission()
-  //                                 : 0; // envLight->sample_dir(new_ray);
-  //   L_out += bsdf * incident_radiance * dot(isect.n, new_ray.d);
-  //   // multiply the pdf outside of the for loop for efficiency since it is a constant
-  // }
-  // L_out *= (2 * PI) / num_samples; // 1 / (2 * PI) is the pdf
-
   for (int i = 0; i < num_samples; i++) {
-    double pdf;
-    Vector3D wi;
-    Vector3D bsdf = isect.bsdf->sample_f(w_out, &wi, &pdf);
-    Ray new_ray = Ray(hit_p, o2w * wi);
+    // generate the incident direction in object space
+    Vector3D wi = hemisphereSampler->get_sample();
     Intersection new_isect;
 
-    assert(dot(isect.n, new_ray.d) > 0);
+    // the ray is in world space
+    Ray new_ray = Ray(hit_p, o2w * wi);
+    new_ray.min_t = EPS_F;
 
-    Vector3D incident_radiance = (bvh->intersect(new_ray, &new_isect))
-                                  ? new_isect.bsdf->get_emission()
-                                  : 0; // envLight->sample_dir(new_ray);
-    L_out += bsdf * incident_radiance * dot(isect.n, new_ray.d) / pdf;
+    // the bsdf is the property of the object and is in object space
+    Vector3D bsdf = isect.bsdf->f(w_out, wi);
+
+    Vector3D L_i = (bvh->intersect(new_ray, &new_isect))
+                    ? new_isect.bsdf->get_emission()
+                    : envLight->sample_dir(new_ray);
+
+    L_out += bsdf * L_i * dot(isect.n, new_ray.d); // we multiply the pdf outside of the for loop for efficiency since it is a constant
   }
-  L_out /= num_samples;
+  L_out *= (2 * PI) / num_samples; // 1 / (2 * PI) is the pdf
 
   return L_out;
 
@@ -139,29 +123,22 @@ PathTracer::estimate_direct_lighting_importance(const Ray &r,
   const Vector3D w_out = w2o * (-r.d);
   Vector3D L_out;
 
+  Vector3D wi;
+  double dist_to_light;
+  double pdf;
   for (const auto &light: scene->lights) {
     if (light->is_delta_light()) {
-      Vector3D wi;
-      double dist_to_light;
-      double pdf;
       Vector3D light_radiance = light->sample_L(hit_p, &wi, &dist_to_light, &pdf);
       Vector3D bsdf = isect.bsdf->f(w_out, wi);
       Ray new_ray(hit_p, wi, dist_to_light - EPS_F);
       new_ray.min_t = EPS_F;
       Intersection new_isect;
-      // new_isect.t = dist_to_light - EPS_F;
 
-      // assert(bvh->intersect(new_ray, &new_isect));
-      // Vector3D incident_radiance = zero_bounce_radiance(new_ray, new_isect);
-
-      Vector3D incident_radiance = (bvh->intersect(new_ray, &new_isect))
+      Vector3D L_i = (bvh->intersect(new_ray, &new_isect))
                                     ? new_isect.bsdf->get_emission()
                                     : light_radiance;
-      L_out += bsdf * incident_radiance * dot(isect.n, new_ray.d) / pdf;
+      L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf;
     } else {
-      Vector3D wi;
-      double dist_to_light;
-      double pdf;
       Vector3D cur_L_out;
       for (int i = 0; i < ns_area_light; i++) {
         Vector3D light_radiance = light->sample_L(hit_p, &wi, &dist_to_light, &pdf);
@@ -170,10 +147,10 @@ PathTracer::estimate_direct_lighting_importance(const Ray &r,
         new_ray.min_t = EPS_F;
         Intersection new_isect;
 
-        Vector3D incident_radiance = (bvh->intersect(new_ray, &new_isect))
+        Vector3D L_i = (bvh->intersect(new_ray, &new_isect))
                                       ? new_isect.bsdf->get_emission()
                                       : light_radiance;
-        cur_L_out += bsdf * incident_radiance * dot(isect.n, new_ray.d) / pdf;
+        cur_L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf;
       }
       cur_L_out /= ns_area_light;
       L_out += cur_L_out;
