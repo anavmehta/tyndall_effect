@@ -20,7 +20,7 @@ bool Sphere::test(const Ray &r, double &t1, double &t2) const {
   auto delta = b * b - 4 * a * c;
   if (delta == 0) { // tangent, only one intersection
     double t = -b / (2 * a);
-    if (t >= t1 && t <= t2) {
+    if (t > t1 && t < t2) {
       t1 = t;
       return true;
     }
@@ -29,11 +29,11 @@ bool Sphere::test(const Ray &r, double &t1, double &t2) const {
     double tmp = sqrt(delta);
     double low = (-b - tmp) / (2 * a);
     double high = (-b + tmp) / (2 * a);
-    if (low >= t1 && low <= t2) {
+    if (low > t1 && low < t2) {
       t1 = low;
       return true;
     }
-    if (high >= t1 && high <= t2) {
+    if (high > t1 && high < t2) {
       t1 = high;
       return true;
     }
@@ -61,6 +61,7 @@ bool Sphere::intersect(const Ray &r, Intersection *i) const {
   // correspondingly.
   double t1 = r.min_t, t2 = min(i->t, r.max_t);
   if (test(r, t1, t2)) {
+    r.max_t = t1;
     i->t = t1;
     i->n = (r.o + t1 * r.d - this->o).unit();
     i->primitive = this;

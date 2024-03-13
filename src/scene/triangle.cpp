@@ -59,10 +59,11 @@ bool Triangle::intersect(const Ray &r, Intersection *isect) const {
   // place, the Intersection data should be updated accordingly
   auto [t, b0, b1, b2] = Moller_Trumbore(r, *this);
   assert(r.min_t >= 0);
-  if (t <= r.min_t || t >= min(isect->t, r.max_t))
+  if (t <= r.min_t || t >= r.max_t)
     return false;
   if (min({b0, b1, b2}) < 0 || max({b0, b1, b2}) > 1)
     return false;
+  r.max_t = t; // max_t is mutable and we can modify it
   isect->t = t;
   isect->n = (b0 * n1 + b1 * n2 + b2 * n3).unit();
   isect->primitive = this;
