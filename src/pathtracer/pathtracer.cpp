@@ -1,6 +1,7 @@
 #include "pathtracer.h"
 
 #include "pathtracer/intersection.h"
+#include "pathtracer/ray.h"
 #include "scene/light.h"
 #include "scene/sphere.h"
 #include "scene/triangle.h"
@@ -79,13 +80,15 @@ PathTracer::estimate_direct_lighting_hemisphere(const Ray &r,
   // TODO BEFORE YOU BEGIN
   // UPDATE `est_radiance_global_illumination` to return direct lighting instead of normal shading 
 
+  assert(r.depth > 0);
+
   for (int i = 0; i < num_samples; i++) {
     // generate the incident direction in object space
     Vector3D wi = hemisphereSampler->get_sample();
     Intersection new_isect;
 
     // the ray is in world space
-    Ray new_ray = Ray(hit_p, o2w * wi);
+    Ray new_ray = Ray(hit_p, o2w * wi, int(r.depth - 1));
     new_ray.min_t = EPS_F;
 
     // the bsdf is the property of the object and is in object space
@@ -95,7 +98,7 @@ PathTracer::estimate_direct_lighting_hemisphere(const Ray &r,
                     ? new_isect.bsdf->get_emission()
                     : envLight->sample_dir(new_ray);
 
-    L_out += bsdf * L_i * dot(isect.n, new_ray.d); // we multiply the pdf outside of the for loop for efficiency since it is a constant
+    L_out += bsdf * L_i * dot(isect.n, new_ray.d) * 2; // we multiply the pdf outside of the for loop for efficiency since it is a constant
   }
   L_out *= (2 * PI) / num_samples; // 1 / (2 * PI) is the pdf
 
@@ -123,6 +126,8 @@ PathTracer::estimate_direct_lighting_importance(const Ray &r,
   const Vector3D w_out = w2o * (-r.d);
   Vector3D L_out;
 
+  assert(r.depth > 0);
+
   Vector3D wi;
   double dist_to_light;
   double pdf;
@@ -130,27 +135,27 @@ PathTracer::estimate_direct_lighting_importance(const Ray &r,
     if (light->is_delta_light()) {
       Vector3D light_radiance = light->sample_L(hit_p, &wi, &dist_to_light, &pdf);
       Vector3D bsdf = isect.bsdf->f(w_out, wi);
-      Ray new_ray(hit_p, wi, dist_to_light - EPS_F);
+      Ray new_ray(hit_p, wi, dist_to_light - EPS_F, r.depth - 1);
       new_ray.min_t = EPS_F;
       Intersection new_isect;
 
       Vector3D L_i = (bvh->intersect(new_ray, &new_isect))
                                     ? new_isect.bsdf->get_emission()
                                     : light_radiance;
-      L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf;
+      L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf * 2;
     } else {
       Vector3D cur_L_out;
       for (int i = 0; i < ns_area_light; i++) {
         Vector3D light_radiance = light->sample_L(hit_p, &wi, &dist_to_light, &pdf);
         Vector3D bsdf = isect.bsdf->f(w_out, wi);
-        Ray new_ray(hit_p, wi, dist_to_light - EPS_F);
+        Ray new_ray(hit_p, wi, dist_to_light - EPS_F, r.depth - 1);
         new_ray.min_t = EPS_F;
         Intersection new_isect;
 
         Vector3D L_i = (bvh->intersect(new_ray, &new_isect))
                                       ? new_isect.bsdf->get_emission()
                                       : light_radiance;
-        cur_L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf;
+        cur_L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf * 2;
       }
       cur_L_out /= ns_area_light;
       L_out += cur_L_out;
@@ -195,7 +200,40 @@ Vector3D PathTracer::at_least_one_bounce_radiance(const Ray &r,
   // TODO: Part 4, Task 2
   // Returns the one bounce radiance + radiance from extra bounces at this point.
   // Should be called recursively to simulate extra bounces.
+  
 
+  if (r.depth == 1)
+    return one_bounce_radiance(r, isect);
+
+  // K^{depth + 1}(L_e)
+  if (isAccumBounces)
+    L_out = one_bounce_radiance(r, isect);
+
+  // generate a ray and calculate the radiance
+  Vector3D wi;
+  double pdf;
+  Vector3D bsdf = isect.bsdf->sample_f(w_out, &wi, &pdf);
+  Ray new_ray(hit_p, o2w * wi, int(r.depth - 1));
+  new_ray.min_t = EPS_F;
+
+  Intersection new_isect;
+  // Task 2
+  // if (bvh->intersect(new_ray, &new_isect)) {
+  //   Vector3D L_i = at_least_one_bounce_radiance(new_ray, new_isect);
+  //   L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf;
+  // }
+
+  // Task 3
+  static const double p_rr = 0.3; // probability of russian roulette
+  if (bvh->intersect(new_ray, &new_isect)) {
+    if (r.depth == max_ray_depth || r.depth == max_ray_depth - 1) {
+      Vector3D L_i = at_least_one_bounce_radiance(new_ray, new_isect);
+      L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf * 2;
+    } else if (coin_flip(p_rr)) {
+      Vector3D L_i = at_least_one_bounce_radiance(new_ray, new_isect);
+      L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf / p_rr * 2;
+    }
+  }
 
   return L_out;
 }
@@ -217,15 +255,22 @@ Vector3D PathTracer::est_radiance_global_illumination(const Ray &r) {
   if (!bvh->intersect(r, &isect))
     return envLight ? envLight->sample_dir(r) : L_out;
 
-
-  // L_out = (isect.t == INF_D) ? debug_shading(r.d) : normal_shading(isect.n);
+  if (PART <= 2)
+    L_out = (isect.t == INF_D) ? debug_shading(r.d) : normal_shading(isect.n);
 
   // TODO (Part 3): Return the direct illumination.
-  L_out = zero_bounce_radiance(r, isect);
-  L_out += one_bounce_radiance(r, isect);
+  else if (PART == 3)
+    L_out = zero_bounce_radiance(r, isect) + one_bounce_radiance(r, isect);
 
   // TODO (Part 4): Accumulate the "direct" and "indirect"
   // parts of global illumination into L_out rather than just direct
+  else {
+    if (isAccumBounces || max_ray_depth == 0)
+      L_out = zero_bounce_radiance(r, isect);
+
+    if (max_ray_depth > 0)
+      L_out += at_least_one_bounce_radiance(r, isect);
+  }
 
   return L_out;
 }
@@ -244,20 +289,51 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
   Vector3D overall_radiance;
   auto w = sampleBuffer.w, h = sampleBuffer.h; // the width and height of the camera space
 
-  for (int i = 0; i < num_samples; i++) {
-    // sample uniformly from the pixel
-    auto sample = origin + gridSampler->get_sample();
-    Ray ray = camera->generate_ray(sample.x / w, sample.y / h); // transform into image space and call generate_ray
-    auto est_radiance = est_radiance_global_illumination(ray);
-    overall_radiance += est_radiance;
+  // Part 1.2
+  if (PART <= 4) { 
+    for (int i = 0; i < num_samples; i++) {
+      // sample uniformly from the pixel
+      auto sample = origin + gridSampler->get_sample();
+      Ray ray = camera->generate_ray(sample.x / w, sample.y / h); // transform into image space and call generate_ray
+      ray.depth = max_ray_depth;
+      auto est_radiance = est_radiance_global_illumination(ray);
+      overall_radiance += est_radiance;
+    }
+
+    // Refer to Lecture12:29 for the n-dimensional MC estimator
+    // the width and height of the pixel are both 1
+    Vector3D MC_est_radiance = overall_radiance / num_samples;
+
+    sampleBuffer.update_pixel(MC_est_radiance, x, y);
+    sampleCountBuffer[x + y * sampleBuffer.w] = num_samples;
+  } 
+  // Part 5
+  else {
+    int samples = 0;
+    double s1 = 0, s2 = 0;
+    while (samples < num_samples) {
+      samples += samplesPerBatch;
+      for (int i = 0; i < samplesPerBatch; i++) {
+        auto sample = origin + gridSampler->get_sample();
+        Ray ray = camera->generate_ray(sample.x / w, sample.y / h); // transform into image space and call generate_ray
+        ray.depth = max_ray_depth;
+        auto est_radiance = est_radiance_global_illumination(ray);
+        overall_radiance += est_radiance;
+        auto illum = est_radiance.illum();
+        s1 += illum;
+        s2 += illum * illum;
+      }
+      auto mean = s1 / samples;
+      auto variance = (s2 - s1 * s1 / samples) / (samples - 1);
+      if (1.96 * variance / sqrt(samples) <= maxTolerance * mean)
+        break;
+    }
+    Vector3D MC_est_radiance = overall_radiance / samples;
+
+    sampleBuffer.update_pixel(MC_est_radiance, x, y);
+    sampleCountBuffer[x + y * sampleBuffer.w] = samples;
   }
 
-  // Refer to Lecture12:29 for the n-dimensional MC estimator
-  // the width and height of the pixel are both 1
-  Vector3D MC_est_radiance = overall_radiance / ns_aa;
-
-  sampleBuffer.update_pixel(MC_est_radiance, x, y);
-  sampleCountBuffer[x + y * sampleBuffer.w] = num_samples;
 
 
 }
