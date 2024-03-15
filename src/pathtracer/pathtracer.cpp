@@ -325,7 +325,7 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
       }
       auto mean = s1 / samples;
       auto variance = (s2 - s1 * s1 / samples) / (samples - 1);
-      if (1.96 * variance / sqrt(samples) <= maxTolerance * mean)
+      if (1.96 * sqrt(variance) / sqrt(samples) <= maxTolerance * mean)
         break;
     }
     Vector3D MC_est_radiance = overall_radiance / samples;
