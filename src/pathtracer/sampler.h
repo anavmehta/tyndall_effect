@@ -5,6 +5,7 @@
 #include "CGL/vector3D.h"
 #include "CGL/misc.h"
 #include "util/random_util.h"
+#include <vector>
 
 namespace CGL {
 
@@ -24,6 +25,11 @@ class Sampler2D {
    * according to the particular sampler's distribution.
    */
   virtual Vector2D get_sample() const = 0;
+
+  /*
+   * Get a batch of samples
+   */
+  virtual std::vector<Vector2D> get_samples_batch(size_t n) const;
 
 }; // class Sampler2D
 
@@ -66,6 +72,16 @@ class UniformGridSampler2D : public Sampler2D {
   Vector2D get_sample() const;
 
 }; // class UniformSampler2D
+
+// Extra credit
+class JitteredGridSampler2D : public Sampler2D {
+ public:
+  
+  Vector2D get_sample() const;
+
+  std::vector<Vector2D> get_samples_batch(size_t n) const;
+
+}; // class JitteredGridSampler2D
 
 /**
  * A Sampler3D implementation with uniform distribution on unit hemisphere

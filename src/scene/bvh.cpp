@@ -48,7 +48,7 @@ void BVHAccel::drawOutline(BVHNode *node, const Color &c, float alpha) const {
   }
 }
 
-#define BVHACC
+// #define BVHACC
 
 #ifndef BVHACC
 BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
