@@ -41,7 +41,7 @@
 
 <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2023</h1>
 <h1 align="middle">Project 3-1: Path Tracer</h1>
-<h2 align="middle">YOUR NAME(S)</h2>
+<h2 align="middle">Yifan Yin & Jared Basilio</h2>
 
 <!-- Add Website URL -->
 <h2 align="middle">Website URL: <a href="TODO">TODO</a></h2>
@@ -58,7 +58,7 @@
       </tr>
   </table>
 </div>
-
+<!-- 
 <p>All of the text in your write-up should be <em>in your own words</em>. If you need to add additional HTML features to this document, you can search the <a href="http://www.w3schools.com/">http://www.w3schools.com/</a> website for instructions. To edit the HTML, you can just copy and paste existing chunks and fill in the text and image file names appropriately.</p>
 <o>The website writeup is intended to be a self-contained walkthrough of the assignment: we want this to be a piece of work which showcases your understanding of relevant concepts through both mesh images as well as written explanations about what you did to complete each part of the assignment. Try to be as clear and organized as possible when writing about your own output files or extensions to the assignment. We want to understand what you've achieved and how you've done it!</p> 
 <p>If you are well-versed in web development, feel free to ditch this template and make a better looking page.</p>
@@ -80,7 +80,7 @@ Do <em>NOT</em> use absolute paths, such as <pre>"/Users/student/Desktop/image.j
 <p align="middle"><pre align="middle">a^2 + b^2 = c^2</pre></p>
 <p>or, alternatively, you can include an SVG image of a LaTex formula.</p>
 
-<div>
+<div> -->
 
 <h2 align="middle">Overview</h2>
 <p>
@@ -97,7 +97,51 @@ Show images with normal shading for a few small .dae files. -->
   Walk through the ray generation and primitive intersection parts of the rendering pipeline.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    <h4>Ray Generation</h4>
+    Ray generation first requires translating the provided normalize image coordinates
+     from image space to camera space. 
+    We do this by subtracting each coordinate by \(0.5 \) then multiplying the \(x \) coordinate by 
+    \(\tan {\frac{hFov}{2}} \) and then multiplying the \(y \) coordinate by \(\tan {\frac{vFov}{2}} \). We reduce 
+    our coordinates to get the center of the grid square.
+
+    Given these transformed coordinates, we can turn this into the direction of the ray in camera space 
+    where the \(z \) value is initially \(-1 \). Multiply this direction by the camera-to-world rotation matrix 
+    (<code>c2w</code> in <code>camera.h</code>) and create a Ray object using the current position of the camera and 
+    unit vector of our new 3D object. Set the bounds of our ray (<code>min_t</code>, <code>max_t</code>) to our clipping planes 
+    <code>nClip</code> and <code>fClip</code>.
+
+    We then uniformly sample from the provided pixel coordinate <code>num_samples</code> times, each time generating a ray adding 
+    the estimated radiance given the <code>est_radiance_global_illumination</code> function to the overall radiance. We use a 
+    MC estimator that is the radiance per sample and update our pixel in our sample buffer with this value. Set the sample count buffer at \(x + y * width \) to the number of samples.
+
+    <br /><br />
+    <h4>Primitive intersections</h4>
+    We now need to check if any triangles or spheres in the space intersect the ray to apply some seperate value and not have the ray pass through the object. 
+    <h5>Triangle Intersections</h5>
+    We implement the <code>has_intersection</code> function that takes in a ray \(r \) an returns a boolean if that ray intersects a triangle. 
+    This calculates a multitude of values listed below:
+    \[t = \frac{((\text ray \space \text origin - p_1) \times (p_2 - p_1)) \cdot (p_3 - p_1)}{(\text ray \space \text direction \times (p_3 - p_1)) \cdot (p_2 - p_1)} \]
+    \[b_1 = \frac{(\text ray \space \text direction \times (p_3 - p_1)) \cdot (\text ray \space \text origin - p_1)}{(\text ray \space \text direction \times (p_3 - p_1)) \cdot (p_2 - p_1)} \]
+    \[b_2 = \frac{(\text ray \space \text origin \times (p_2 - p_1)) \cdot \text ray \space \text direction}{(\text ray \space \text direction \times (p_3 - p_1)) \cdot (p_2 - p_1)} \]
+    \[b_0 = 1 - b_1 - b_2 \]
+    where \(p \) are the vertices off the triangle. These values derive from the Möller–Trumbore intersection algorithm. If the \(t \) value 
+    is not within bounds of the ray or the values of \(b \) are outside the range \([0,1] \) we return false. 
+    The <code>intersection</code> function sets our <code>max_t</code> of the ray to this \(t \) value if it does not intersect. Additionally an intersection object is 
+    set such that the \(t \) value is the found \(t \) value, the normal at point of intersection is unit vector of the weighted sum of \(b \) values, the primitive is the triangle, and the bsdf is found.
+    <h5>Sphere Intersections</h5>
+    Since the triangle intersection logic requires vertices (not a sphere technically does not have), we utilize a different logic 
+    that utilizes the minimum and maximum \(t \) values of the ray. We calculate the following:
+    \[a = \text ray \space \text direction \cdot \text ray \space \text direction\]
+    \[b = 2*((\text ray \space \text origin - \text sphere \space \text origin) \cdot \text ray \space \text direction)\]
+    \[c = (\text ray \space \text origin - \text sphere \space \text origin) \cdot (\text ray \space \text origin - \text sphere \space \text origin) - \text minimum \space \text t\]
+    \[\Delta  = b^2 - 4ac\]
+    We can think of these formulas as the a,b, an c in the quadratic formula. 
+    If \(\Delta \) is equal to 0, there is no + or - in the quadratic formula, our ray is tangent to the sphere and there is only one intersection. We can just see if the resulting quadratic formula value \(t \) 
+    is within our bounds. If it is we set the minimum t to this value and return saying it does intersect. If the \(\Delta \) is greater 
+    than 0 we account for two solutions to quadratic formula and see if either of them are within our bounds. If they are we set the minimum t to this value.
+    Otherwise the ray does not intersect since in the quadratic formula this would be imaginary.
+    <code>intersect</code> does this check again and sets the values of <code>max_t</code> of the ray to the minimum value, sets \(t \) to \(t_1 \), 
+    sets \(n \) to the unit vector of \(\text ray \space \text origin  + (\text minimum \space \text t)* \text ray \space \text direction - \text sphere \space \text origin\) and the bsdf.
 </p>
 <br>
 
@@ -105,34 +149,37 @@ Show images with normal shading for a few small .dae files. -->
   Explain the triangle intersection algorithm you implemented in your own words.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    The Moller Trumbore Algorithm is the driving algorithm we used for our implementation.  It starts by finding two vectors that represent two sides of the triangle, then calculates a 
+    perpendicular vector to the ray and one of the triangle's sides. By using some math, it checks if the 
+    ray and the triangle are likely to intersect, and if they're not parallel, it finds where they cross paths. 
+    Next, it ensures that this intersection point is actually inside the triangle. Finally, it confirms that this
+     intersection point is in front of the ray's starting point.
 </p>
 <br>
 
 <h3>
   Show images with normal shading for a few small .dae files.
 </h3>
-<!-- Example of including multiple figures -->
 <div align="middle">
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example1.dae</figcaption>
+        <img src="images/part_1/bunny_p1.png" align="middle" width="400px"/>
+        <figcaption>CBBunny.dae</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example2.dae</figcaption>
+        <img src="images/part_1/coil_p1.png" align="middle" width="400px"/>
+        <figcaption>CBcoil.dae</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example3.dae</figcaption>
+        <img src="images/part_1/dragon_p1.png" align="middle" width="400px"/>
+        <figcaption>CBdragon.dae</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example4.dae</figcaption>
+        <img src="images/part_1/sphere_p1.png" align="middle" width="400px"/>
+        <figcaption>Cbspheres.dae</figcaption>
       </td>
     </tr>
   </table>
@@ -160,22 +207,22 @@ Compare rendering times on a few scenes with moderately complex geometries with 
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example1.dae</figcaption>
+        <img src="images/part_2/beetle_p2.png" align="middle" width="400px"/>
+        <figcaption>beetle.dae</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example2.dae</figcaption>
+        <img src="images/part_2/cow_p2.png" align="middle" width="400px"/>
+        <figcaption>cow.dae</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example3.dae</figcaption>
+        <img src="images/part_2/peter_p2.png" align="middle" width="400px"/>
+        <figcaption>peter.dae</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example4.dae</figcaption>
+        <img src="images/part_2/teapot_p2.png" align="middle" width="400px"/>
+        <figcaption>teapot.dae</figcaption>
       </td>
     </tr>
   </table>
@@ -200,7 +247,9 @@ Compare the results between uniform hemisphere sampling and lighting sampling in
   Walk through both implementations of the direct lighting function.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    We First Implemented the <code>f</code> function to return the reflectance given the \(w_o \) and \(w_1 \) sources.
+    After We implemnted the <code>sample_f</code> function to set \(w_1 \) given the pdf and \(w_o \) and using the <code>f</code> function
+    we used before. 
 </p>
 
 <h3>
@@ -221,25 +270,25 @@ Compare the results between uniform hemisphere sampling and lighting sampling in
     <br>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example1.dae</figcaption>
+        <img src="images/part_3/lucy_p3.png" align="middle" width="400px"/>
+        <figcaption>CBlucy.dae</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example1.dae</figcaption>
+        <img src="images/part_3/bench_p3.png" align="middle" width="400px"/>
+        <figcaption>bench.dae</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/part_3/bench_p3.png" align="middle" width="400px"/>
+        <figcaption>bench.dae</figcaption>
+      </td>
+      <td>
+        <img src="images/part_3/lucy_p3.png" align="middle" width="400px"/>
+        <figcaption>CBlucy.dae</figcaption>
       </td>
     </tr>
     <br>
-    <tr align="center">
-      <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example2.dae</figcaption>
-      </td>
-      <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example2.dae</figcaption>
-      </td>
-    </tr>
     <br>
   </table>
 </div>
