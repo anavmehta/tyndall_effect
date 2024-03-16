@@ -2,6 +2,7 @@
 
 #include "pathtracer/intersection.h"
 #include "pathtracer/ray.h"
+#include "pathtracer/sampler.h"
 #include "scene/light.h"
 #include "scene/sphere.h"
 #include "scene/triangle.h"
@@ -16,7 +17,11 @@ using namespace CGL::SceneObjects;
 namespace CGL {
 
 PathTracer::PathTracer() {
+#ifndef JITTERED
   gridSampler = new UniformGridSampler2D();
+#else
+  gridSampler = new JitteredGridSampler2D();
+#endif
   hemisphereSampler = new UniformHemisphereSampler3D();
 
   tm_gamma = 2.2f;
@@ -291,9 +296,11 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
 
   // Part 1.2
   if (PART <= 4) { 
+    auto &&samples = gridSampler->get_samples_batch(num_samples);
     for (int i = 0; i < num_samples; i++) {
       // sample uniformly from the pixel
-      auto sample = origin + gridSampler->get_sample();
+      // auto sample = origin + gridSampler->get_sample();
+      auto sample = origin + samples[i];
       Ray ray = camera->generate_ray(sample.x / w, sample.y / h); // transform into image space and call generate_ray
       ray.depth = max_ray_depth;
       auto est_radiance = est_radiance_global_illumination(ray);
@@ -309,12 +316,14 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
   } 
   // Part 5
   else {
-    int samples = 0;
+    int cur_samples = 0;
     double s1 = 0, s2 = 0;
-    while (samples < num_samples) {
-      samples += samplesPerBatch;
+    while (cur_samples < num_samples) {
+      cur_samples += samplesPerBatch;
+      auto &&samples = gridSampler->get_samples_batch(samplesPerBatch);
       for (int i = 0; i < samplesPerBatch; i++) {
-        auto sample = origin + gridSampler->get_sample();
+        // auto sample = origin + gridSampler->get_sample();
+        auto sample = origin + samples[i];
         Ray ray = camera->generate_ray(sample.x / w, sample.y / h); // transform into image space and call generate_ray
         ray.depth = max_ray_depth;
         auto est_radiance = est_radiance_global_illumination(ray);
@@ -323,15 +332,15 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
         s1 += illum;
         s2 += illum * illum;
       }
-      auto mean = s1 / samples;
-      auto variance = (s2 - s1 * s1 / samples) / (samples - 1);
-      if (1.96 * sqrt(variance) / sqrt(samples) <= maxTolerance * mean)
+      auto mean = s1 / cur_samples;
+      auto variance = (s2 - s1 * s1 / cur_samples) / (cur_samples - 1);
+      if (1.96 * sqrt(variance) / sqrt(cur_samples) <= maxTolerance * mean)
         break;
     }
-    Vector3D MC_est_radiance = overall_radiance / samples;
+    Vector3D MC_est_radiance = overall_radiance / cur_samples;
 
     sampleBuffer.update_pixel(MC_est_radiance, x, y);
-    sampleCountBuffer[x + y * sampleBuffer.w] = samples;
+    sampleCountBuffer[x + y * sampleBuffer.w] = cur_samples;
   }
 
 

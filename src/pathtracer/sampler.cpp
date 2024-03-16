@@ -1,6 +1,19 @@
 #include "sampler.h"
+#include "vector2D.h"
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <iterator>
 
 namespace CGL {
+
+std::vector<Vector2D> Sampler2D::get_samples_batch(size_t n) const {
+  std::vector<Vector2D> v;
+  v.reserve(n);
+  std::generate_n(std::back_inserter(v), n, [&]() { return get_sample(); });
+
+  return v;
+}
 
 /**
  * A Sampler2D implementation with uniform distribution on unit square
@@ -11,6 +24,29 @@ Vector2D UniformGridSampler2D::get_sample() const {
 
 }
 
+
+Vector2D JitteredGridSampler2D::get_sample() const {
+
+  return Vector2D(random_uniform(), random_uniform());
+
+}
+
+std::vector<Vector2D> JitteredGridSampler2D::get_samples_batch(size_t n) const {
+  int sqrt_n = std::sqrt(n);
+  double inv_sqrt_n = 1. / sqrt_n;
+
+  std::vector<Vector2D> v(n);
+
+  for (int i = 0; i < sqrt_n; i++) {
+    for (int j = 0; j < sqrt_n; j++) {
+      v[sqrt_n * i + j] = get_sample() / sqrt_n + Vector2D(i * inv_sqrt_n, j * inv_sqrt_n);
+    }
+  }
+
+  std::generate_n(v.begin() + sqrt_n * sqrt_n, n - sqrt_n * sqrt_n, [&]() { return get_sample(); });
+
+  return v;
+}
 
 // Uniform Sphere Sampler3D Implementation //
 

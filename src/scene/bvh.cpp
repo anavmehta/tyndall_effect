@@ -4,6 +4,7 @@
 #include "scene/primitive.h"
 
 #include <algorithm>
+#include <stack>
 
 using namespace std;
 
@@ -47,6 +48,9 @@ void BVHAccel::drawOutline(BVHNode *node, const Color &c, float alpha) const {
   }
 }
 
+#define BVHACC
+
+#ifndef BVHACC
 BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
                                  std::vector<Primitive *>::iterator end,
                                  size_t max_leaf_size) {
@@ -112,6 +116,89 @@ BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
 
 }
 
+#else
+BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
+                                 std::vector<Primitive *>::iterator end,
+                                 size_t max_leaf_size) {
+
+  // TODO (Part 2.1):
+  // Construct a BVH from the given vector of primitives and maximum leaf
+  // size configuration. The starter code build a BVH aggregate with a
+  // single leaf node (which is also the root) that encloses all the
+  // primitives.
+  using it = decltype(start);
+  using ValueType = std::tuple<it, it, BVHNode **>;
+
+  std::stack<ValueType, std::vector<ValueType>> stack;
+  stack.push({start, end, NULL});
+
+  BVHNode *root = NULL;
+
+  while (!stack.empty()) {
+    auto [start, end, parent] = stack.top();
+    stack.pop();
+
+    BBox bbox;
+
+    // compute the bounding box of a list of primitives
+    for (auto p = start; p != end; p++) {
+      BBox bb = (*p)->get_bbox();
+      bbox.expand(bb);
+    }
+
+    // initialize a new BVHNode with that bounding box
+    BVHNode *node = new BVHNode(bbox);
+
+    if (parent)
+      *parent = node;
+    else
+      root = node;
+
+    // If there are no more than max_leaf_size primitives in the list, the node we just created is a leaf node and we should update its start and end iterators appropriately.
+    if (end - start <= max_leaf_size) {
+      node->start = start;
+      node->end = end;
+    }
+    // Otherwise, we need to divide the primitives into a "left" and "right" collection.
+    else {
+      Vector3D centroid = bbox.centroid();
+      std::vector<int> left(3), right(3);
+
+      // split along all axises
+      for (auto p = start; p != end; p++) {
+        BBox bb = (*p)->get_bbox();
+        Vector3D bbc = bb.centroid();
+        for (int i = 0; i < 3; i++) {
+          if (bbc[i] < centroid[i])
+            left[i]++;
+          else
+            right[i]++;
+        }
+      }
+
+      // create a heuristic that selects the axis giving us the most benefit
+      auto h = [&](int i, int j){ return left[i] * right[i] < left[j] * right[j]; };
+      int axis = max({0, 1, 2}, h);
+
+      // partition the array so that elements of the left child are placed on the left
+      // elements of the right child are placed on the right
+      auto partition_point = std::partition(start, end, [&](Primitive* p){
+        return p->get_bbox().centroid()[axis] < centroid[axis];
+      });
+
+      stack.emplace(ValueType{start, partition_point, &node->l});
+      stack.emplace(ValueType{partition_point, end, &node->r});
+    }
+
+  }
+
+  return root;
+
+
+}
+#endif
+
+#ifndef BVHACC
 bool BVHAccel::has_intersection(const Ray &ray, BVHNode *node) const {
   // TODO (Part 2.3):
   // Fill in the intersect function.
@@ -137,6 +224,44 @@ bool BVHAccel::has_intersection(const Ray &ray, BVHNode *node) const {
   return false;
 }
 
+#else
+bool BVHAccel::has_intersection(const Ray &ray, BVHNode *node) const {
+  // TODO (Part 2.3):
+  // Fill in the intersect function.
+  // Take note that this function has a short-circuit that the
+  // Intersection version cannot, since it returns as soon as it finds
+  // a hit, it doesn't actually have to find the closest hit.
+
+  using ValueType = BVHNode *;
+
+  std::stack<ValueType, std::vector<ValueType>> stack;
+  stack.push(node);
+
+  while (!stack.empty()) {
+    auto node = stack.top();
+    stack.pop();
+
+    BBox bb = node->bb;
+    double min_t = ray.min_t, max_t = ray.max_t;
+    if (bb.intersect(ray, min_t, max_t)) {
+      if (node->isLeaf()) {
+        for (auto p = node->start; p != node->end; p++) {
+          total_isects++;
+          if ((*p)->has_intersection(ray))
+            return true;
+        }
+      } else {
+        stack.push(node->l);
+        stack.push(node->r);
+      }
+    }
+  }
+
+  return false;
+}
+#endif
+
+#ifndef BVHACC
 bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
   // TODO (Part 2.3):
   // Fill in the intersect function.
@@ -158,6 +283,39 @@ bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
   }
   return false;
 }
+
+#else
+bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
+  // TODO (Part 2.3):
+  // Fill in the intersect function.
+
+  using ValueType = BVHNode *;
+
+  std::stack<ValueType, std::vector<ValueType>> stack;
+  stack.push(node);
+  
+  bool hit = false;
+  while (!stack.empty()) {
+    auto node = stack.top();
+    stack.pop();
+
+    BBox bb = node->bb;
+    if (bb.intersect(ray, ray.min_t, ray.max_t)) {
+      if (node->isLeaf()) {
+        for (auto p = node->start; p != node->end; p++) {
+          total_isects++;
+          hit |= (*p)->intersect(ray, i);
+        }
+      } else {
+        stack.push(node->l);
+        stack.push(node->r);
+      }
+    }
+  }
+
+  return hit;
+}
+#endif
 
 } // namespace SceneObjects
 } // namespace CGL
