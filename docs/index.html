@@ -44,7 +44,7 @@
 <h2 align="middle">Yifan Yin & Jared Basilio</h2>
 
 <!-- Add Website URL -->
-<h2 align="middle">Website URL: <a href="TODO">TODO</a></h2>
+<h2 align="middle">Website URL: <a href="https://cal-cs184-student.github.io/hw-webpages-sp24-JaredBasilio/hw3/index.html">Website Link</a></h2>
 
 <br><br>
 
@@ -417,12 +417,12 @@ You will probably want to use the instructional machines for the above renders i
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example1.dae</figcaption>
+        <img src="images/part_4/spheres_direct.png" align="middle" width="400px"/>
+        <figcaption>CBspheres_lambertian.dae (direct lighting)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>example2.dae</figcaption>
+        <img src="images/part_4/spheres_indirect.png" align="middle" width="400px"/>
+        <figcaption>CBspheres_lambertian.dae (indirect lighting)</figcaption>
       </td>
     </tr>
   </table>
@@ -437,61 +437,104 @@ You will probably want to use the instructional machines for the above renders i
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>Only direct illumination (example1.dae)</figcaption>
+        <img src="images/part_4/spheres_only_direct.png" align="middle" width="400px"/>
+        <figcaption>Only direct illumination (spheres.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>Only indirect illumination (example1.dae)</figcaption>
+        <img src="images/part_4/spheres_only_indirect.png" align="middle" width="400px"/>
+        <figcaption>Only indirect illumination (spheres.dae)</figcaption>
       </td>
     </tr>
   </table>
 </div>
 <br>
 <p>
-    YOUR EXPLANATION GOES HERE
+    In only indirect illumination, the light at the top of the scene is absent because it is considers an indirect light source but light coming from the walls or the objects appear. 
+    On the other hand, the lighting in only direct illumination only shows the light coming from the top and none from reflections.
 </p>
 <br>
 
 <h3>
-  For CBbunny.dae, compare rendered views with max_ray_depth set to 0, 1, 2, 3, and 100 (the -m flag). Use 1024 samples per pixel.
+  For CBbunny.dae, render the mth bounce of light with max_ray_depth set to 0, 1, 2, 3, 4, and 5 (the -m flag), and isAccumBounces=false. Explain in your writeup what you see for the 2nd and 3rd bounce of light, and how it contributes to the quality of the rendered image compared to rasterization. Use 1024 samples per pixel.
 </h3>
 <!-- Example of including multiple figures -->
 <div align="middle">
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/bunny_0.png" align="middle" width="400px"/>
         <figcaption>max_ray_depth = 0 (CBbunny.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/bunny_1.png" align="middle" width="400px"/>
         <figcaption>max_ray_depth = 1 (CBbunny.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/CBbunny_O_2.png" align="middle" width="400px"/>
         <figcaption>max_ray_depth = 2 (CBbunny.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/CBbunny_O_3.png" align="middle" width="400px"/>
         <figcaption>max_ray_depth = 3 (CBbunny.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>max_ray_depth = 100 (CBbunny.dae)</figcaption>
+        <img src="images/part_4/CBbunny_O_4.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 4 (CBbunny.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/part_4/CBbunny_O_5.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 5 (CBbunny.dae)</figcaption>
       </td>
     </tr>
   </table>
 </div>
 <br>
 <p>
-    YOUR EXPLANATION GOES HERE
+   In 2 and 3 we see reflectance from the floor and walls onto the bunny, this produces more of the global illumination that we are looking for.
 </p>
 <br>
+
+<h3>
+  For CBbunny.dae, output the Russian Roulette rendering with max_ray_depth set to 0, 1, 2, 3, 4, and 100(the -m flag). Use 1024 samples per pixel.
+</h3>
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/part_4/spheres_RR_0.png" align="middle" width="400px"/>
+        <figcaption>Max Ray Depth 0 (CBSphere_lambertian.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/part_4/spheres_RR_1.png" align="middle" width="400px"/>
+        <figcaption>Max Ray Depth 1 (CBSphere_lambertian.dae)</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/part_4/spheres_RR_2.png" align="middle" width="400px"/>
+        <figcaption>Max Ray Depth 2 (CBSphere_lambertian.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/part_4/spheres_RR_3.png" align="middle" width="400px"/>
+        <figcaption>Max Ray Depth 3 (CBSphere_lambertian.dae)</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/part_4/spheres_RR_100.png" align="middle" width="400px"/>
+        <figcaption>Max Ray Depth 100 (CBSphere_lambertian.dae)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<p>
+  The quality of the shadows are not as intense as the rays increase.
+</p>
 
 <h3>
   Pick one scene and compare rendered views with various sample-per-pixel rates, including at least 1, 2, 4, 8, 16, 64, and 1024. Use 4 light rays.
@@ -501,37 +544,33 @@ You will probably want to use the instructional machines for the above renders i
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>1 sample per pixel (example1.dae)</figcaption>
+        <img src="images/part_4/spheres_7_1.png" align="middle" width="400px"/>
+        <figcaption>1 sample per pixel (CBbunny.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/spheres_7_2.png" align="middle" width="400px"/>
         <figcaption>2 samples per pixel (example1.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/spheres_7_4.png" align="middle" width="400px"/>
         <figcaption>4 samples per pixel (example1.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/spheres_7_8.png" align="middle" width="400px"/>
         <figcaption>8 samples per pixel (example1.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/spheres_7_16.png" align="middle" width="400px"/>
         <figcaption>16 samples per pixel (example1.dae)</figcaption>
-      </td>
-      <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>64 samples per pixel (example1.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
+        <img src="images/part_4/spheres_7_1024.png" align="middle" width="400px"/>
         <figcaption>1024 samples per pixel (example1.dae)</figcaption>
       </td>
     </tr>
@@ -539,7 +578,7 @@ You will probably want to use the instructional machines for the above renders i
 </div>
 <br>
 <p>
-    YOUR EXPLANATION GOES HERE
+    As we increase the samples, we lose the grain from the photos.
 </p>
 <br>
 
@@ -576,22 +615,22 @@ Pick one scene and render it with at least 2048 samples per pixel. Show a good s
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>Rendered image (example1.dae)</figcaption>
+        <img src="images/part_5/bunny_p5.png" align="middle" width="400px"/>
+        <figcaption>Rendered image (CBBunny.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>Sample rate image (example1.dae)</figcaption>
+        <img src="images/part_5/bunny_p5_rate.png" align="middle" width="400px"/>
+        <figcaption>Sample rate image (CBBunny.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>Rendered image (example2.dae)</figcaption>
+        <img src="images/part_5/spheres_p5.png" align="middle" width="400px"/>
+        <figcaption>Rendered image (CBspheres_lambertian.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="400px"/>
-        <figcaption>Sample rate image (example2.dae)</figcaption>
+        <img src="images/part_5/spheres_p5_rate.png" align="middle" width="400px"/>
+        <figcaption>Sample rate image (CBspheres_lambertian.dae)</figcaption>
       </td>
     </tr>
   </table>
