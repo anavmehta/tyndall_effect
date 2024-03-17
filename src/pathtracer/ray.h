@@ -6,7 +6,7 @@
 #include "CGL/vector4D.h"
 #include "CGL/matrix4x4.h"
 
-#define PART 5
+#define PART 3
 
 #define PART_1 (PART >= 1)
 #define PART_2 (PART >= 2)
