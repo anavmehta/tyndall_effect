@@ -313,22 +313,22 @@ Compare the results between uniform hemisphere sampling and lighting sampling in
     <br>
     <tr align="center">
       <td>
-        <img src="images/part_3/lucy_p3.png" align="middle" width="400px"/>
-        <figcaption>CBlucy.dae</figcaption>
+        <img src="images/part_3/CBbunny_H_64_32.png" align="middle" width="400px"/>
+        <figcaption>CBbunny.dae</figcaption>
       </td>
       <td>
-        <img src="images/part_3/bench_p3.png" align="middle" width="400px"/>
-        <figcaption>bench.dae</figcaption>
+        <img src="images/part_3/CBbunny_64_32.png" align="middle" width="400px"/>
+        <figcaption>CBbunny.dae</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/part_3/bench_p3.png" align="middle" width="400px"/>
+        <img src="images/part_3/bench_64_32.png" align="middle" width="400px"/>
         <figcaption>bench.dae</figcaption>
       </td>
       <td>
-        <img src="images/part_3/lucy_p3.png" align="middle" width="400px"/>
-        <figcaption>CBlucy.dae</figcaption>
+        <img src="images/part_3/bench_64_32.png" align="middle" width="400px"/>
+        <figcaption>bench.dae</figcaption>
       </td>
     </tr>
     <br>
@@ -345,28 +345,28 @@ Compare the results between uniform hemisphere sampling and lighting sampling in
   <table style="width:100%">
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="200px"/>
-        <figcaption>1 Light Ray (example1.dae)</figcaption>
+        <img src="images/part_3/dragon_1_1.png" align="middle" width="200px"/>
+        <figcaption>1 Light Ray (dragon.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="200px"/>
-        <figcaption>4 Light Rays (example1.dae)</figcaption>
+        <img src="images/part_3/dragon_4_1.png" align="middle" width="200px"/>
+        <figcaption>4 Light Rays (dragon.dae)</figcaption>
       </td>
     </tr>
     <tr align="center">
       <td>
-        <img src="images/your_file.png" align="middle" width="200px"/>
-        <figcaption>16 Light Rays (example1.dae)</figcaption>
+        <img src="images/part_3/dragon_16_1.png" align="middle" width="200px"/>
+        <figcaption>16 Light Rays (dragon.dae)</figcaption>
       </td>
       <td>
-        <img src="images/your_file.png" align="middle" width="200px"/>
-        <figcaption>64 Light Rays (example1.dae)</figcaption>
+        <img src="images/part_3/dragon_64_1.png" align="middle" width="200px"/>
+        <figcaption>64 Light Rays (dragon.dae)</figcaption>
       </td>
     </tr>
   </table>
 </div>
 <p>
-    YOUR EXPLANATION GOES HERE
+    Increasing the light rays decreases the noise, but as we become greater the visual improvement becomes harder to classify.
 </p>
 <br>
 
@@ -374,7 +374,10 @@ Compare the results between uniform hemisphere sampling and lighting sampling in
   Compare the results between uniform hemisphere sampling and lighting sampling in a one-paragraph analysis.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    Uniform Hemisphere sampling provides a grainier render than lighting sampling. 
+    This is becuase uniform hemisphere sampling utilizes an unbiased approach to global illumination. On the other hand, 
+    direct render sampling samples from the lights and uses some average of the light or a more intelligent calculation to determine light values. 
+    We also render more around the light, ignoring darker spots.
 </p>
 <br>
 
@@ -391,8 +394,18 @@ You will probably want to use the instructional machines for the above renders i
   Walk through your implementation of the indirect lighting function.
 </h3>
 <p>
-    This implementation implements modifications to the functions generated in Part 3 such that we 
-    represent a diffuse material that reflects incoming light equally in all directions on the hemisphere. 
+    We first implemented <code>sample_f</code> which samples the incoming direction \(w_i \) from the provided pdf using the <code>get_sample</code> function 
+    and then calls and returns the <code>f</code> function that we implemented in part 3. Then we implement the 
+    <code>at_least_one_bounce_radiance</code> function to return the light given the depth. If our depth is 1, we can just return the 
+    output of the <code>one_bounce_radiance</code> function. We have to first generate a ray and calculate the radiance. If the new ray intersects the bvh, 
+    we can recrusively call the <code>one_bounce_radiance</code> function and add it to the light based on the following function (this is similar to part 3):
+    \[\frac{BSDF*L_i*(\text intersecion \space \text normal \cdot \text new \space \text ray \space \text direction)}{pdf}\]. Using the 
+    russian roulette technique, we can use the probability \(0.3 \) for chance of bouncing. If the new ray intersects 
+    we check if the depth of the ray is the max depth or one less than the max depth. If so, we can recursively call <code>at_least_one_bounce_radiance</code> and add the result in the following way:
+    \[\frac{BSDF*L_i*(\text intersecion \space \text normal \cdot \text new \space \text ray \space \text direction)}{pdf * 2}\]
+    Otherwise, we call add the result this way:
+    \[\frac{\frac{BSDF*L_i*(\text intersecion \space \text normal \cdot \text new \space \text ray \space \text direction)}{pdf}}{0.6}\]
+    The 0.6 is just the russian roullette probability 0.3 multiplied by 2.
 </p>
 <br>
 
@@ -549,7 +562,7 @@ Pick one scene and render it with at least 2048 samples per pixel. Show a good s
   <code>est_radiance_global_illumination</code> on the ray, we can generate the estimated radiance and add this to the overall raiance.Each time checking if the following holds:
   \[mean = \frac{s_1}{samples} \]
   \[var = \frac{\frac{s_2 - s_1 ^ 2}{samples}}{samples - 1} \]
-  \[\frac{1.96*\sqrt{var}}{\sqrt{samples}} \leq max_tolerance*mean\]
+  \[\frac{1.96*\sqrt{var}}{\sqrt{samples}} \leq maxTolerance*mean\]
   If this check holds, we can prematurely stop sampling. The estimated radiance become the average of the overall radiance per sample. Like before, we update the pixel with the 
   estimated radiance and set the \(x + y*width \) value to the number of samples.
 </p>
