@@ -196,7 +196,27 @@ Compare rendering times on a few scenes with moderately complex geometries with 
   Walk through your BVH construction algorithm. Explain the heuristic you chose for picking the splitting point.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    Our BVH construction algorithm consists of three major steps: constructing the BVH, intersecting the bounding box, and intersecting the BVH.
+    <h4>Constructing the BVH</h4>
+    Given a list of primitives, expand the bounding box such that it will fit all the primitives. Now with our bounding box, we create 
+    a new <code>BVHNode</code> If there are no more than max_leaf_size primitives in the list, the node we just 
+    created is a leaf node and we should update its start and end iterators appropriately. This check is our base case. Otherwise, we need to divide the primitives into a "left" and "right" collection.
+    To do this, we first split along all of the axises (X,Y,Z) by comparing the centroid of each primitive to the centroid of the bounding box we found earlier.
+    Then create a heuristic that selects the axis giving us the most benefit. This is simply if the product of 
+    an axis's left and right values is greater than another.
+    We then partition the array so that elements of the left child are placed on the left and all of the elements of the right child are place on the right.
+    We recursively call this function to do this again until we reach our base case.
+    You can think of this similar to merge sort or a divide and conquer approach.
+    <h4>Intersecting the bounding box</h4>
+    To intersect the bounding box, we simply get the min values of the axis's and check if these values are logical. More formally for our min values we do:
+    \[\frac{\text min \space \text corner_{axis} - \text ray \space \text origin_{axis}}{\text ray \space \text direction_{axis}} \]
+    \[\frac{\text max \space \text corner_{axis} - \text ray \space \text origin_{axis}}{\text ray \space \text direction_{axis}} \]
+    <h4>Interesecting the BVH</h4>
+    Intersecting the BVH has two functions, first to check if we can intersect and second actually intersecting.
+    To check if we can intersect, we get the bounding box of the provided node and check if the bounding box intersects the provided ray. 
+    If it doesn't, we can recursively check if the left or right child of the provided node intersects. If the bound box and provided node do intersect, 
+    we check if the node is a leaf. If it is a leaf we iterate through the scene primitives and increment the total count of intersections and check if the primitive has an intersection with our ray. If any of them do, we can say that the node and ray intersects. 
+    For actually intersecting, if the node is a leaf we can do the same thing and iterate through the scene primitives, incrementing total intersects and intersecting the primitive with the ray. Otherwise recursively call the intersection function on the left and right child. We return True or False if there is an intersection. 
 </p>
 
 <h3>
@@ -233,7 +253,11 @@ Compare rendering times on a few scenes with moderately complex geometries with 
   Compare rendering times on a few scenes with moderately complex geometries with and without BVH acceleration. Present your results in a one-paragraph analysis.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    In complex figures, when rendering <code>CBLucy.dae</code> with BVH acceleration, BVH traced 287604 rays with an average speed of 1.5787 million rays per second and averaging 2.445074 intersection tests per ray.
+    Without BVH acceleration, BVH traced 295980 rays, an average speed 1.5194 million rays per second and averaged 2.395236 intersection tests per ray.
+    In less complex figures, when rendering <code>teapot.dae</code> with BVH acceleration, BVH traced 290328 rays with and average speed 1.7142 million rays per second and averaging 5.722404 intersection tests per ray.
+    Without BVH acceleration in less complex figures, when rendering <code>teapot.dae</code> without BVH acceleration, BVH traced 278633 rays with an average speed of 1.6659 million rays per second and averaging 5.794755 intersection tests per ray.
+    Comparing the two techniques, BVH acceleration we had more intersections and rays per second than without BVH acceleration. However we do trace more rays without the optimization technique.
 </p>
 <br>
 
@@ -247,9 +271,28 @@ Compare the results between uniform hemisphere sampling and lighting sampling in
   Walk through both implementations of the direct lighting function.
 </h3>
 <p>
-    We First Implemented the <code>f</code> function to return the reflectance given the \(w_o \) and \(w_1 \) sources.
-    After We implemnted the <code>sample_f</code> function to set \(w_1 \) given the pdf and \(w_o \) and using the <code>f</code> function
-    we used before. 
+    Direct lighting has two modes in this assignment, with uniform hemisphere sampling or importance sampling. Before those we have to provide the capability to 
+    diffuse material that reflects incoming light equally in all directions.
+    We First Implemented the <code>f</code> function to return the reflectance given the \(w_o \) and \(w_i \), the outgoing light direction and incoming light direction.
+    Since this is uniform, we just have to just return \(\frac{reflectance}{2 \pi} \). We then implement zero-bounce illumination,
+    which is when the light does not bounce off anything in the scene and is only the light that comes from the light source itself. 
+    This function takes in a ray and an intersection object and simply (in our case) return the emission of the bsect of the intersection. We now are split into two parts 
+    Uniform Hemisphere Sampling and Importance Sampling.
+    <h4>Uniform Hemisphere Sampling</h4>
+    <code>estimate_direct_lighting_hemisphere</code> takes in a ray and an intersection and returns the pathtracing vector. Utilizing the global \(L \) value, we add to this 
+    sampling \(n \) times.
+    In this function we sample the incoming light direction from a <code>hemisphereSampler</code> object and create a new ray where the origin is at <code>hit_p</code>, the direction at the sampled direction put into a 3x3 matrix, and a depth of the ray - 1.
+    We set the <code>min_t</code> of this ray to <code>EPS_F</code>. Using the intersection, we find the BSDF using <code>w_out</code> and <code>w_i</code>.
+    If the new ray intersects the BVH, our light is emission of the new intersection, otherwise its the sample direction of the new ray. Using the retrieved values we can add the following to our Light:
+    \[BSDF*L_i*(\text intersecion \space \text normal \cdot \text new \space \text ray \space \text direction) * 2\]
+    After sampling, we weight our light out by \(\frac{2 \pi}{samples} \) since we are in a hemisphere. We modify <code>est_radiance_global_illumination</code> to add a one bounce radiance to our zero bounce and have the one bounce radiance return the 
+    <code>estimate_direct_lighting_hemisphere</code> function we made. This is later changed to check if our <code>direct_hemisphere_sample</code> boolean is set to treu to use, otherwise we use importance sampling.
+    <h4>Importance Sampling</h4>
+    The <code>estimate_direct_lighting_importance</code> function is very different, for each light we check if the light is a delta light. 
+    If it is, we increment \(L \) by the following:
+    \[\frac{BSDF*L_i*(\text intersection \space \text normal \cdot \text new \space \text ray \space \text direction)}{2*pdf} \]
+    This is similar to the uniform hemisphere function but rather the we sample from the light rather than the hemisphere sampler and default to it if the new ray does not intersect our primitive. The <code>max_t</code> of our new ray is the <code>dist_to_light</code> - EPS_F.
+    If we are not a delta light, we sample <code>ns_area_light</code> times with the <code>sample_L</code> function like before and just get the mean sample.
 </p>
 
 <h3>
@@ -348,7 +391,8 @@ You will probably want to use the instructional machines for the above renders i
   Walk through your implementation of the indirect lighting function.
 </h3>
 <p>
-    YOUR RESPONSE GOES HERE
+    This implementation implements modifications to the functions generated in Part 3 such that we 
+    represent a diffuse material that reflects incoming light equally in all directions on the hemisphere. 
 </p>
 <br>
 
@@ -494,8 +538,20 @@ Pick one scene and render it with at least 2048 samples per pixel. Show a good s
 <h3>
   Explain adaptive sampling. Walk through your implementation of the adaptive sampling.
 </h3>
-<p>
-    YOUR RESPONSE GOES HERE
+<p>    
+  Adaptive sampling is a technique used in computer graphics, particularly in rendering, to 
+  intelligently allocate computational resources for generating images. 
+  Instead of uniformly sampling every pixel in an image, adaptive sampling adjusts the sampling rate based on certain criteria, 
+  such as the complexity of the scene or the level of detail required. This approach aims to focus computational 
+  effort where it is most needed, improving the efficiency of the rendering process while maintaining image quality. In our 
+  implementation, we iterate \(\frac{numSamples}{samplesPerBatch} \) times.The \(s_1 \) and \(s_2 \) values are the illumination of the est radiance and the squared illumination of the est radiance. 
+  We generate a ray by turning a sampled pixel to image space and calling <code>generate_ray</code>. We have to set the depth of this ray to the maximum ray depth. Using 
+  <code>est_radiance_global_illumination</code> on the ray, we can generate the estimated radiance and add this to the overall raiance.Each time checking if the following holds:
+  \[mean = \frac{s_1}{samples} \]
+  \[var = \frac{\frac{s_2 - s_1 ^ 2}{samples}}{samples - 1} \]
+  \[\frac{1.96*\sqrt{var}}{\sqrt{samples}} \leq max_tolerance*mean\]
+  If this check holds, we can prematurely stop sampling. The estimated radiance become the average of the overall radiance per sample. Like before, we update the pixel with the 
+  estimated radiance and set the \(x + y*width \) value to the number of samples.
 </p>
 <br>
 
