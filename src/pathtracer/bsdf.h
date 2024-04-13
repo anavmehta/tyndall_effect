@@ -151,6 +151,38 @@ private:
   CosineWeightedHemisphereSampler3D sampler;
 
 }; // class DiffuseBSDF
+class FogBSDF : public BSDF {
+ public:
+
+  /**
+   * DiffuseBSDFs are constructed with a Vector3D as input,
+   * which is stored into the member variable `reflectance`.
+   */
+  FogBSDF(const Vector3D a) : reflectance(a) { }
+
+  Vector3D f(const Vector3D wo, const Vector3D wi);
+  Vector3D sample_f(const Vector3D wo, Vector3D* wi, double* pdf);
+  Vector3D get_emission() const { return Vector3D(); }
+  bool is_delta() const { return false; }
+
+  void render_debugger_node();
+
+private:
+  /*
+   * Reflectance is also commonly called the "albedo" of a surface,
+   * which ranges from [0,1] in RGB, representing a range of
+   * total absorption(0) vs. total reflection(1) per color channel.
+   */
+  Vector3D reflectance;
+  /*
+   * A sampler object that can be used to obtain
+   * a random Vector3D sampled according to a 
+   * cosine-weighted hemisphere distribution.
+   * See pathtracer/sampler.cpp.
+   */
+  CosineWeightedHemisphereSampler3D sampler;
+
+}; // class DiffuseBSDF
 
 /**
  * Microfacet BSDF.
