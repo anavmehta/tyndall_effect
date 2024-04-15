@@ -49,7 +49,7 @@ namespace CGL {
          */
         Vector3D estimate_direct_lighting_hemisphere(const Ray& r, const SceneObjects::Intersection& isect);
         Vector3D estimate_direct_lighting_importance(const Ray& r, const SceneObjects::Intersection& isect);
-        Vector3D absorption(const Ray& r, const SceneObjects::Intersection& isect);
+        Vector3D hit_fog(const Ray& r, const SceneObjects::Intersection& isect);
         Vector3D est_radiance_global_illumination(const Ray& r);
         Vector3D zero_bounce_radiance(const Ray& r, const SceneObjects::Intersection& isect);
         Vector3D one_bounce_radiance(const Ray& r, const SceneObjects::Intersection& isect);
@@ -105,6 +105,7 @@ namespace CGL {
         double P_absorb;          /// probability of absorption
         double P_scatter;
         double P_transmit;
+        double P_density;
     };
 
 }  // namespace CGL

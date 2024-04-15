@@ -30,7 +30,8 @@ PathTracer::PathTracer() {
   tm_wht = 5.0f;
   P_absorb = 15;
   P_scatter = 0.3;
-  P_transmit = P_scatter+ P_absorb;
+  P_transmit = P_scatter+ P_absorb; 
+  P_density = 10;
 
 }
 
@@ -189,12 +190,13 @@ Vector3D PathTracer::one_bounce_radiance(const Ray &r,
   // TODO: Part 3, Task 3
   // Returns either the direct illumination by hemisphere or importance sampling
   // depending on `direct_hemisphere_sample`
+  return hit_fog(r, isect);
   if (direct_hemisphere_sample)
     return estimate_direct_lighting_hemisphere(r, isect);
   else
     return estimate_direct_lighting_importance(r, isect);
 }
-Vector3D PathTracer::absorption(const Ray &r, const Intersection &isect){
+Vector3D PathTracer::hit_fog(const Ray &r, const Intersection &isect){
   Matrix3x3 o2w;
   make_coord_space(o2w, isect.n);
   Matrix3x3 w2o = o2w.T();
@@ -203,7 +205,7 @@ Vector3D PathTracer::absorption(const Ray &r, const Intersection &isect){
   // toward the camera if this is a primary ray)
    Vector3D hit_p = r.o + r.d * isect.t;
   auto epsilon = ((double) rand() / (RAND_MAX));
-  auto distance_btwn_origin_fog = -log(1-epsilon)/P_absorb;
+  auto distance_btwn_origin_fog = -log(1-epsilon)/P_density;
   auto fog_time = distance_btwn_origin_fog / r.d.norm2();
   const Vector3D fog_pos = r.o + r.d * fog_time;
   const Vector3D w_out = w2o * (-r.d);
@@ -294,7 +296,7 @@ Vector3D PathTracer::at_least_one_bounce_radiance(const Ray &r,
   static const double p_rr = 0.3; // probability of russian roulette
   if (bvh->intersect(new_ray, &new_isect)) {
     if (r.depth == max_ray_depth || r.depth == max_ray_depth - 1) {
-      Vector3D L_i = at_least_one_bounce_radiance(new_ray, new_isect) * exp(-P_transmit *new_isect.t);
+      Vector3D L_i = at_least_one_bounce_radiance(new_ray, new_isect) * exp(-P_absorb *new_isect.t);
       // std::cout << new_isect.t << endl;
       L_out += bsdf * L_i * dot(isect.n, new_ray.d) / pdf * 2;
     } else if (coin_flip(p_rr)) {
