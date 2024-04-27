@@ -2,9 +2,9 @@
 #define CGL_RAY_H
 
 #include "CGL/CGL.h"
+#include "CGL/matrix4x4.h"
 #include "CGL/vector3D.h"
 #include "CGL/vector4D.h"
-#include "CGL/matrix4x4.h"
 
 #define PART 4
 
@@ -16,16 +16,15 @@
 
 namespace CGL {
 
-
 struct Ray {
-  size_t depth;  ///< depth of the Ray
+  size_t depth; ///< depth of the Ray
 
-  Vector3D o;  ///< origin
-  Vector3D d;  ///< direction
+  Vector3D o;           ///< origin
+  Vector3D d;           ///< direction
   mutable double min_t; ///< treat the ray as a segment (ray "begin" at min_t)
   mutable double max_t; ///< treat the ray as a segment (ray "ends" at max_t)
 
-  Vector3D inv_d;  ///< component wise inverse
+  Vector3D inv_d; ///< component wise inverse
 
   // Ray() {}
 
@@ -36,8 +35,8 @@ struct Ray {
    * \param d direction of the ray
    * \param depth depth of the ray
    */
-    Ray(const Vector3D o, const Vector3D d, int depth = 0)
-        : o(o), d(d), min_t(EPS_F), max_t(INF_D), depth(depth) {
+  Ray(const Vector3D o, const Vector3D d, int depth = 0)
+      : o(o), d(d), min_t(EPS_F), max_t(INF_D), depth(depth) {
     inv_d = 1.0 / d;
   }
 
@@ -49,11 +48,10 @@ struct Ray {
    * \param max_t max t value for the ray (if it's actually a segment)
    * \param depth depth of the ray
    */
-    Ray(const Vector3D o, const Vector3D d, double max_t, int depth = 0)
-        : o(o), d(d), min_t(EPS_F), max_t(max_t), depth(depth) {
+  Ray(const Vector3D o, const Vector3D d, double max_t, int depth = 0)
+      : o(o), d(d), min_t(EPS_F), max_t(max_t), depth(depth) {
     inv_d = 1.0 / d;
   }
-
 
   /**
    * Returns the point t * |d| along the ray.
@@ -64,8 +62,8 @@ struct Ray {
    * Returns the result of transforming the ray by the given transformation
    * matrix.
    */
-  Ray transform_by(const Matrix4x4& t) const {
-    const Vector4D& newO = t * Vector4D(o, 1.0);
+  Ray transform_by(const Matrix4x4 &t) const {
+    const Vector4D &newO = t * Vector4D(o, 1.0);
     return Ray((newO / newO.w).to3D(), (t * Vector4D(d, 0.0)).to3D());
   }
 };
@@ -73,14 +71,13 @@ struct Ray {
 // structure used for logging rays for subsequent visualization
 struct LoggedRay {
 
-    LoggedRay(const Ray& r, double hit_t)
-        : o(r.o), d(r.d), hit_t(hit_t) {}
+  LoggedRay(const Ray &r, double hit_t) : o(r.o), d(r.d), hit_t(hit_t) {}
 
-    Vector3D o;
-    Vector3D d;
-    double hit_t;
+  Vector3D o;
+  Vector3D d;
+  double hit_t;
 };
 
-}  // namespace CGL
+} // namespace CGL
 
-#endif  // CGL_RAY_H
+#endif // CGL_RAY_H
