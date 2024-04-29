@@ -3,9 +3,10 @@
 
 #include "CGL/timer.h"
 
-#include "scene/bvh.h"
-#include "pathtracer/sampler.h"
 #include "pathtracer/intersection.h"
+#include "pathtracer/noise.h"
+#include "pathtracer/sampler.h"
+#include "scene/bvh.h"
 
 #include "application/renderer.h"
 
@@ -15,99 +16,110 @@ using CGL::SceneObjects::Scene;
 #include "scene/environment_light.h"
 using CGL::SceneObjects::EnvironmentLight;
 
-using CGL::SceneObjects::BVHNode;
 using CGL::SceneObjects::BVHAccel;
+using CGL::SceneObjects::BVHNode;
 
 namespace CGL {
 
-    class PathTracer {
-    public:
-        PathTracer();
-        ~PathTracer();
+class PathTracer {
+public:
+  PathTracer();
+  ~PathTracer();
 
-        /**
-         * Sets the pathtracer's frame size. If in a running state (VISUALIZE,
-         * RENDERING, or DONE), transitions to READY b/c a changing window size
-         * would invalidate the output. If in INIT and configuration is done,
-         * transitions to READY.
-         * \param width width of the frame
-         * \param height height of the frame
-         */
-        void set_frame_size(size_t width, size_t height);
+  /**
+   * Sets the pathtracer's frame size. If in a running state (VISUALIZE,
+   * RENDERING, or DONE), transitions to READY b/c a changing window size
+   * would invalidate the output. If in INIT and configuration is done,
+   * transitions to READY.
+   * \param width width of the frame
+   * \param height height of the frame
+   */
+  void set_frame_size(size_t width, size_t height);
 
-        void write_to_framebuffer(ImageBuffer& framebuffer, size_t x0, size_t y0, size_t x1, size_t y1);
+  void write_to_framebuffer(ImageBuffer &framebuffer, size_t x0, size_t y0,
+                            size_t x1, size_t y1);
 
-        /**
-         * If the pathtracer is in READY, delete all internal data, transition to INIT.
-         */
-        void clear();
+  /**
+   * If the pathtracer is in READY, delete all internal data, transition to
+   * INIT.
+   */
+  void clear();
 
-        void autofocus(Vector2D loc);
+  void autofocus(Vector2D loc);
 
-        /**
-         * Trace an ray in the scene.
-         */
-        Vector3D estimate_direct_lighting_hemisphere(const Ray& r, const SceneObjects::Intersection& isect);
-        Vector3D estimate_direct_lighting_importance(const Ray& r, const SceneObjects::Intersection& isect);
-        Vector3D hit_fog(const Ray& r, const SceneObjects::Intersection& isect);
-        Vector3D est_radiance_global_illumination(const Ray& r);
-        Vector3D zero_bounce_radiance(const Ray& r, const SceneObjects::Intersection& isect);
-        Vector3D one_bounce_radiance(const Ray& r, const SceneObjects::Intersection& isect);
-        Vector3D at_least_one_bounce_radiance(const Ray& r, const SceneObjects::Intersection& isect);
-        
-        Vector3D debug_shading(const Vector3D d) {
-            return Vector3D(abs(d.r), abs(d.g), .0).unit();
-        }
+  /**
+   * Trace an ray in the scene.
+   */
+  Vector3D
+  estimate_direct_lighting_hemisphere(const Ray &r,
+                                      const SceneObjects::Intersection &isect);
+  Vector3D
+  estimate_direct_lighting_importance(const Ray &r,
+                                      const SceneObjects::Intersection &isect);
+  Vector3D hit_fog(const Ray &r, const SceneObjects::Intersection &isect);
+  Vector3D est_radiance_global_illumination(const Ray &r);
+  Vector3D zero_bounce_radiance(const Ray &r,
+                                const SceneObjects::Intersection &isect);
+  Vector3D one_bounce_radiance(const Ray &r,
+                               const SceneObjects::Intersection &isect);
+  Vector3D
+  at_least_one_bounce_radiance(const Ray &r,
+                               const SceneObjects::Intersection &isect);
 
-        Vector3D normal_shading(const Vector3D n) {
-            return n * .5 + Vector3D(.5);
-        }
+  Vector3D debug_shading(const Vector3D d) {
+    return Vector3D(abs(d.r), abs(d.g), .0).unit();
+  }
 
-        /**
-         * Trace a camera ray given by the pixel coordinate.
-         */
-        void raytrace_pixel(size_t x, size_t y);
+  Vector3D normal_shading(const Vector3D n) { return n * .5 + Vector3D(.5); }
 
-        // Integrator sampling settings //
+  /**
+   * Trace a camera ray given by the pixel coordinate.
+   */
+  void raytrace_pixel(size_t x, size_t y);
 
-        size_t max_ray_depth; ///< maximum allowed ray depth (applies to all rays)
-        size_t isAccumBounces; ///< number of bounces to accumulate
-        size_t ns_aa;         ///< number of camera rays in one pixel (along one axis)
-        size_t ns_area_light; ///< number samples per area light source
-        size_t ns_diff;       ///< number of samples - diffuse surfaces
-        size_t ns_glsy;       ///< number of samples - glossy surfaces
-        size_t ns_refr;       ///< number of samples - refractive surfaces
+  // Integrator sampling settings //
 
-        size_t samplesPerBatch;
-        double maxTolerance;
-        bool direct_hemisphere_sample; ///< true if sampling uniformly from hemisphere for direct lighting. Otherwise, light sample
+  size_t max_ray_depth;  ///< maximum allowed ray depth (applies to all rays)
+  size_t isAccumBounces; ///< number of bounces to accumulate
+  size_t ns_aa;         ///< number of camera rays in one pixel (along one axis)
+  size_t ns_area_light; ///< number samples per area light source
+  size_t ns_diff;       ///< number of samples - diffuse surfaces
+  size_t ns_glsy;       ///< number of samples - glossy surfaces
+  size_t ns_refr;       ///< number of samples - refractive surfaces
 
-        // Components //
+  size_t samplesPerBatch;
+  double maxTolerance;
+  bool direct_hemisphere_sample; ///< true if sampling uniformly from hemisphere
+                                 ///< for direct lighting. Otherwise, light
+                                 ///< sample
 
-        BVHAccel* bvh;                 ///< BVH accelerator aggregate
-        EnvironmentLight* envLight;    ///< environment map
-        Sampler2D* gridSampler;        ///< samples unit grid
-        Sampler3D* hemisphereSampler;  ///< samples unit hemisphere
-        HDRImageBuffer sampleBuffer;   ///< sample buffer
-        Timer timer;                   ///< performance test timer
+  // Components //
 
-        std::vector<int> sampleCountBuffer;   ///< sample count buffer
+  BVHAccel *bvh;                ///< BVH accelerator aggregate
+  EnvironmentLight *envLight;   ///< environment map
+  Sampler2D *gridSampler;       ///< samples unit grid
+  Sampler3D *hemisphereSampler; ///< samples unit hemisphere
+  HDRImageBuffer sampleBuffer;  ///< sample buffer
+  Timer timer;                  ///< performance test timer
 
-        Scene* scene;         ///< current scene
-        Camera* camera;       ///< current camera
+  std::vector<int> sampleCountBuffer; ///< sample count buffer
 
-        // Tonemapping Controls //
+  Scene *scene;   ///< current scene
+  Camera *camera; ///< current camera
 
-        double tm_gamma;                           ///< gamma
-        double tm_level;                           ///< exposure level
-        double tm_key;                             ///< key value
-        double tm_wht;                             ///< white point
-        double P_absorb;          /// probability of absorption
-        double P_scatter;
-        double P_transmit;
-        double P_density;
-    };
+  // Tonemapping Controls //
 
-}  // namespace CGL
+  double tm_gamma; ///< gamma
+  double tm_level; ///< exposure level
+  double tm_key;   ///< key value
+  double tm_wht;   ///< white point
+  double P_absorb; /// probability of absorption
+  double P_scatter;
+  double P_transmit;
+  double P_density;
+  PerlinNoise noise;
+};
 
-#endif  // CGL_RAYTRACER_H
+} // namespace CGL
+
+#endif // CGL_RAYTRACER_H

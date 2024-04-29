@@ -30,6 +30,8 @@ set(APPLICATION_3_1_SOURCE
     # Pathtracer
     src/pathtracer/camera.cpp
     src/pathtracer/bsdf.cpp
+    src/pathtracer/noise.cpp
+
     src/pathtracer/pathtracer.cpp
 
     # Imgui
